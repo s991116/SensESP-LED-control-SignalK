@@ -1,8 +1,8 @@
-# SensESP SignalK Sensor for Volvo Penta Motor
+# SensESP SignalK Sensor for LED Strip control
 
 ## The SensESP will have input from 
-* Multiple 1-wire tempature sensors attached to the engine
-* Input switch to count enginehours
+* SignalK button press on/off
+* Output to control LED strip
 
 You should be able to connect to the WiFi access point with the same name as the device. The password is `thisisfine`.
 
