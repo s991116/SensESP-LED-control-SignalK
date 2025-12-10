@@ -32,8 +32,6 @@ class LedStrip :
     bool LEDState = false;
     int  LEDLevel = 0;
 
-    bool lastSentState = false;    // Used to only sent if there is a change
-
     LedStrip(bool initialState = false, int initialLevel = 0) :
     _state(initialState),
     _level(initialLevel),
@@ -81,6 +79,7 @@ class LedStrip :
     //Producer part
     void update() {
       ESP_LOGD(TAG, "LedStrip update:");
+      
       emit_state_if_changed();
       //emit_level_if_changed();
     }
