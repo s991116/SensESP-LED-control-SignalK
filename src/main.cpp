@@ -109,19 +109,22 @@ class LedStrip :
 //  }
 };
 
+LedStrip ledStrip = LedStrip();
 
 // The setup function performs one-time application initialization.
 void setup() {
   SetupLogging(ESP_LOG_DEBUG);
+  ESP_LOGD(TAG, "Setup started.");
+
   FastLED.addLeds<NEOPIXEL, 2>(leds, NUM_LEDS);
   // Construct the global SensESPApp() object
   SensESPAppBuilder builder;
   sensesp_app = (&builder)
                     // Set a custom hostname for the app.
                     ->set_hostname("LED-strip-controller")
+                    //->enable_uptime_sensor()
                     ->get_app();
 
-  LedStrip ledStrip = LedStrip();
   //Listen for changes and read value
   auto* listener = new SKValueListener<bool>(sk_path_led_state);
   listener->connect_to(&ledStrip);
