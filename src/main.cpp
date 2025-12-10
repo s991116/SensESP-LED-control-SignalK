@@ -18,59 +18,113 @@ using namespace sensesp;
 //Define SmartSwitch
 
 //Define LED-strip setup
-#define NUM_LEDS 3
+#define NUM_LEDS 5
 CRGB leds[NUM_LEDS];
 
 //Listen for Button press on SignalK
 const char* sk_path_led_state = "electrical.switches.cabinLights.state";
 const char* sk_path_led_level = "electrical.switches.cabinLights.level";
+#include <FastLED.h>
 
 class LedStrip {
-
 public:
     using StateCallback = std::function<void(bool)>;
     using LevelCallback = std::function<void(int)>;
 
-    void onStateChange(StateCallback cb) { _state_callback = cb; }
-    void onLevelChange(LevelCallback cb) { _level_callback = cb; }
+    LedStrip(CRGB* leds, int start_index, int count)
+        : leds_(leds), start_(start_index), count_(count) {
+
+        // Initial values
+        state_ = false;
+        level_ = 0;
+
+        update_leds();
+    }
+
+    // --------------------------
+    // Public Set/Get
+    // --------------------------
 
     void SetState(bool s) {
-      ESP_LOGD("LedStrip", "SetState → %d", s);      
-        if (_state != s) {
-          _state = s;
-          if (_state_callback) 
-            _state_callback(s);   // 🔥 emit til IO-klassen
+        if (s == state_) return;
+
+        state_ = s;
+        update_leds();
+
+        if (state_cb_) {
+            state_cb_(state_);
         }
+    }
+
+    bool GetState() const {
+        return state_;
     }
 
     void SetLevel(int l) {
-        ESP_LOGD("LedStrip", "SetLevel → %d", l);
-        if (_level != l) {
-          _level = l;
-          if (l == 0) 
-            SetState(false);
+        if (l < 0) l = 0;
+        if (l > 100) l = 100;
 
-          if (_level_callback) 
-            _level_callback(l);   // 🔥 emit til IO-klassen
+        if (l == level_) return;
+
+        if(l > 0 && level_ == 0 && !state_) {
+          SetState(true);
+        }
+        level_ = l;
+
+        // Level 0 always forces state = OFF
+        if (level_ == 0) {
+            SetState(false);
+        }
+
+        update_leds();
+
+        if (level_cb_) {
+            level_cb_(level_);
         }
     }
 
-    bool GetState() const { 
-      ESP_LOGD("LedStrip", "GetState");
-      return _state; 
+    int GetLevel() const {
+        return level_;
     }
-    
-    int  GetLevel() const { 
-      ESP_LOGD("LedStrip", "GetLevel");
-      return _level; 
-    }
+
+    // --------------------------
+    // Observer registrering
+    // --------------------------
+
+    void onStateChange(StateCallback cb) { state_cb_ = cb; }
+    void onLevelChange(LevelCallback cb) { level_cb_ = cb; }
 
 private:
-    bool _state = false;
-    int  _level = 0;
+    // --------------------------
+    // Internal LED handling
+    // --------------------------
 
-    StateCallback _state_callback;
-    LevelCallback _level_callback;
+    void update_leds() {
+        for (int i = start_; i < start_ + count_; i++) {
+            if (state_ == false) {
+                leds_[i] = CRGB::Black;
+            } else {
+                uint8_t brightness = map(level_, 0, 100, 0, 255);
+                leds_[i].setRGB(brightness, brightness, brightness);
+            }
+        }
+
+        FastLED.show();
+    }
+
+    // --------------------------
+    // Private members
+    // --------------------------
+
+    CRGB* leds_;
+    int start_;
+    int count_;
+
+    bool state_;
+    int level_;
+
+    StateCallback state_cb_;
+    LevelCallback level_cb_;
 };
 
 class LedStripStateIO :
@@ -148,7 +202,7 @@ void setup() {
       ->get_app();
 
   // Create the LED strip model
-  auto* strip = new LedStrip();
+  auto* strip = new LedStrip(leds,1, 3);
 
   // Create IO interfaces
   auto* stateIO = new LedStripStateIO(strip);
