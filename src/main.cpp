@@ -39,45 +39,48 @@ class LedStrip :
     _level(initialLevel),
     _lastStateSent(initialState),
     _lastLevelSent(initialLevel) {
-      ESP_LOGD("LedStrip", "LedStrip initialized");
+      ESP_LOGD(TAG, "LedStrip initialized");
     }
 
-  void SetState(bool state) {
-    _state = state;
-    ESP_LOGD(TAG, "LedStrip SetState returns: %d", _state);
-  }
-
-  bool GetState() const {
-    ESP_LOGD(TAG, "LedStrip GetState returns: %d", _state);
-    return _state;
-  }
-
-  void SetLevel(int level) {
-    _level = level;
-    ESP_LOGD(TAG, "LedStrip SetLevel returns: %d", _level);
-    if (_level == 0) {
-      SetState(false);
+    void SetState(bool state) {
+      _state = state;
+      ESP_LOGD(TAG, "LedStrip SetState returns: %d", _state);
     }
-  }
 
-  int GetLevel() const {
-    ESP_LOGD(TAG, "LedStrip GetLevel returns: %d", _level);
-    return _level;
-  }
+    bool GetState() const {
+      ESP_LOGD(TAG, "LedStrip GetState returns: %d", _state);
+      return _state;
+    }
 
-  // Consumer part
-  void set(const bool& newState) override {
-    SetState(newState);
-    emit_state_if_changed();
-  }
+    void SetLevel(int level) {
+      _level = level;
+      ESP_LOGD(TAG, "LedStrip SetLevel returns: %d", _level);
+      if (_level == 0) {
+        SetState(false);
+      }
+    }
+
+    int GetLevel() const {
+      ESP_LOGD("LedStrip", "LedStrip GetLevel returns: %d", _level);
+      return _level;
+    }
+
+    // Consumer part
+    void set(const bool& newState) override {
+      ESP_LOGD(TAG, "LedStrip set state: %d", newState);
+      SetState(newState);
+      emit_state_if_changed();
+    }
 
 //  void set(const int& newLevel) override {
+//    ESP_LOGD(TAG, "LedStrip set, level: %d", newLevel);
 //    SetLevel(newLevel);
 //    emit_level_if_changed();
 //  }
 
     //Producer part
     void update() {
+      ESP_LOGD(TAG, "LedStrip update:");
       emit_state_if_changed();
       //emit_level_if_changed();
     }
@@ -90,12 +93,13 @@ class LedStrip :
     int  _lastLevelSent;
 
 
-  void emit_state_if_changed() {
-    if (_state != _lastStateSent) {
-      _lastStateSent = _state;
-      this->ValueProducer<bool>::emit(_state);
+    void emit_state_if_changed() {
+      if (_state != _lastStateSent) {
+        _lastStateSent = _state;
+        ESP_LOGD(TAG, "LedStrip emite state: %d", _state);
+        this->ValueProducer<bool>::emit(_state);
+      }
     }
-  }
 
 //  void emit_level_if_changed() {
 //    if (_level != _lastLevelSent) {
@@ -124,7 +128,7 @@ void setup() {
   //Send changes to SignalSK
   ledStrip.connect_to(new SKOutputBool(sk_path_led_state));
  
-  ESP_LOGD("Setup", "LedStrip Consumer and Producer setup complete");
+  ESP_LOGD(TAG, "LedStrip Consumer and Producer setup complete");
 
   sensesp_app->start();
   // To avoid garbage collecting all shared pointers created in setup(),
