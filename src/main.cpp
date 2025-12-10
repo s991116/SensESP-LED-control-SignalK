@@ -6,6 +6,7 @@
 #include "sensesp.h"
 #include "sensesp/signalk/signalk_output.h"
 #include <sensesp/signalk/signalk_value_listener.h>
+#include "sensesp/transforms/change_filter.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/controllers/smart_switch_controller.h"
 #include "sensesp_app_builder.h"
@@ -24,120 +25,165 @@ CRGB leds[NUM_LEDS];
 const char* sk_path_led_state = "electrical.switches.cabinLights.state";
 const char* sk_path_led_level = "electrical.switches.cabinLights.level";
 
-class LedStrip : 
-  public ValueConsumer<bool>,
-  public ValueProducer<bool> {
+class LedStrip {
+
+public:
+    using StateCallback = std::function<void(bool)>;
+    using LevelCallback = std::function<void(int)>;
+
+    void onStateChange(StateCallback cb) { _state_callback = cb; }
+    void onLevelChange(LevelCallback cb) { _level_callback = cb; }
+
+    void SetState(bool s) {
+      ESP_LOGD("LedStrip", "SetState → %d", s);      
+        if (_state != s) {
+          _state = s;
+          if (_state_callback) 
+            _state_callback(s);   // 🔥 emit til IO-klassen
+        }
+    }
+
+    void SetLevel(int l) {
+        ESP_LOGD("LedStrip", "SetLevel → %d", l);
+        if (_level != l) {
+          _level = l;
+          if (l == 0) 
+            SetState(false);
+
+          if (_level_callback) 
+            _level_callback(l);   // 🔥 emit til IO-klassen
+        }
+    }
+
+    bool GetState() const { 
+      ESP_LOGD("LedStrip", "GetState");
+      return _state; 
+    }
+    
+    int  GetLevel() const { 
+      ESP_LOGD("LedStrip", "GetLevel");
+      return _level; 
+    }
+
+private:
+    bool _state = false;
+    int  _level = 0;
+
+    StateCallback _state_callback;
+    LevelCallback _level_callback;
+};
+
+class LedStripStateIO :
+    public ValueConsumer<bool>,
+    public ValueProducer<bool> {
 
   public:
-    bool LEDState = false;
-    int  LEDLevel = 0;
+    LedStripStateIO(LedStrip* strip) : _strip(strip) {
 
-    LedStrip(bool initialState = false, int initialLevel = 0) :
-    _state(initialState),
-    _level(initialLevel),
-    _lastStateSent(initialState),
-    _lastLevelSent(initialLevel) {
-      ESP_LOGD(TAG, "LedStrip initialized");
+        // 🔥 registrér dig som "output-observer"
+        _strip->onStateChange([this](bool v){
+            this->emit_if_changed(v);
+        });
     }
 
-    void SetState(bool state) {
-      _state = state;
-      ESP_LOGD(TAG, "LedStrip SetState returns: %d", _state);
-    }
-
-    bool GetState() const {
-      ESP_LOGD(TAG, "LedStrip GetState returns: %d", _state);
-      return _state;
-    }
-
-    void SetLevel(int level) {
-      _level = level;
-      ESP_LOGD(TAG, "LedStrip SetLevel returns: %d", _level);
-      if (_level == 0) {
-        SetState(false);
-      }
-    }
-
-    int GetLevel() const {
-      ESP_LOGD("LedStrip", "LedStrip GetLevel returns: %d", _level);
-      return _level;
-    }
-
-    // Consumer part
-    void set(const bool& newState) override {
-      ESP_LOGD(TAG, "LedStrip set state: %d", newState);
-      SetState(newState);
-      emit_state_if_changed();
-    }
-
-//  void set(const int& newLevel) override {
-//    ESP_LOGD(TAG, "LedStrip set, level: %d", newLevel);
-//    SetLevel(newLevel);
-//    emit_level_if_changed();
-//  }
-
-    //Producer part
-    void update() {
-      ESP_LOGD(TAG, "LedStrip update:");
-      
-      emit_state_if_changed();
-      //emit_level_if_changed();
+    // consumer (input fra Signal K)
+    void set(const bool& v) override {
+        if (v != _strip->GetState()) {
+            _strip->SetState(v);
+        }
     }
 
   private:
-    bool _state;
-    int  _level;
+    LedStrip* _strip;
+    bool _last = false;
 
-    bool _lastStateSent;
-    int  _lastLevelSent;
+    void emit_if_changed(bool v) {
+        ESP_LOGD("LedStripStateIO", "emit_if_changed → %d", v);      
+        if (v == _last) return;
+        _last = v;
+        emit(v);
+    }
+};
 
+class LedStripLevelIO :
+    public ValueConsumer<int>,
+    public ValueProducer<int> {
 
-    void emit_state_if_changed() {
-      if (_state != _lastStateSent) {
-        _lastStateSent = _state;
-        ESP_LOGD(TAG, "LedStrip emite state: %d", _state);
-        this->ValueProducer<bool>::emit(_state);
+  public:
+    LedStripLevelIO(LedStrip* strip) : _strip(strip) {
+
+        _strip->onLevelChange([this](int v){
+            this->emit_if_changed(v);
+        });
+    }
+
+    void set(const int& v) override {
+      ESP_LOGD("LedStripLevelIO", "set → %d", v);
+  
+      if (v != _strip->GetLevel()) {
+        _strip->SetLevel(v);
       }
     }
 
-//  void emit_level_if_changed() {
-//    if (_level != _lastLevelSent) {
-//      _lastLevelSent = _level;
-//      this->ValueProducer<int>::emit(_level);
-//    }
-//  }
+  private:
+    LedStrip* _strip;
+    int _last = -1;
+
+    void emit_if_changed(int v) {
+      ESP_LOGD("LedStripLevelIO", "emit_if_changed → %d", v);
+      if (v == _last) return;
+        _last = v;
+        emit(v);
+    }
 };
 
-LedStrip ledStrip = LedStrip();
-
-// The setup function performs one-time application initialization.
 void setup() {
+  // Setup debug logging
   SetupLogging(ESP_LOG_DEBUG);
-  ESP_LOGD(TAG, "Setup started.");
 
-  FastLED.addLeds<NEOPIXEL, 2>(leds, NUM_LEDS);
-  // Construct the global SensESPApp() object
+  // Create the SensESP app
   SensESPAppBuilder builder;
   sensesp_app = (&builder)
-                    // Set a custom hostname for the app.
-                    ->set_hostname("LED-strip-controller")
-                    //->enable_uptime_sensor()
-                    ->get_app();
+      ->set_hostname("led-strip-controller")
+      ->get_app();
 
-  //Listen for changes and read value
-  auto* listener = new SKValueListener<bool>(sk_path_led_state);
-  listener->connect_to(&ledStrip);
-  //Send changes to SignalSK
-  ledStrip.connect_to(new SKOutputBool(sk_path_led_state));
- 
-  ESP_LOGD(TAG, "LedStrip Consumer and Producer setup complete");
+  // Create the LED strip model
+  auto* strip = new LedStrip();
 
+  // Create IO interfaces
+  auto* stateIO = new LedStripStateIO(strip);
+  auto* levelIO = new LedStripLevelIO(strip);
+
+  // --- SIGNAL K INPUT (listeners) ---
+
+  // Listen for SK state changes (bool)
+  auto* sk_state_listener = new SKValueListener<bool>("electrical.switches.cabinLights.state");
+  sk_state_listener->connect_to(stateIO);
+
+  // Listen for SK level changes (int)
+  auto* sk_level_listener = new SKValueListener<int>("electrical.switches.cabinLights.level");
+  sk_level_listener->connect_to(levelIO);
+
+  // --- SIGNAL K OUTPUT (emit only when changed) ---
+
+// Emit state → SK
+  stateIO
+      ->connect_to(new ChangeFilter())
+      ->connect_to(new SKOutputBool(
+          "electrical.switches.cabinLights.state"));
+
+  // Emit level → SK
+  levelIO
+      ->connect_to(new ChangeFilter())
+      ->connect_to(new SKOutputInt(
+          "electrical.switches.cabinLights.level"));
+
+  ESP_LOGD("Setup", "LED strip IO fully initialized");
+
+  // Start SenseESP
   sensesp_app->start();
-  // To avoid garbage collecting all shared pointers created in setup(),
-  // loop from here.
-  while (true) {
-    loop();
-  }
 }
 
-void loop() { event_loop()->tick(); }
+void loop() {
+  event_loop()->tick();
+}
