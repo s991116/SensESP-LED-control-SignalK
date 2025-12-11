@@ -32,11 +32,11 @@ public:
     using LevelCallback = std::function<void(int)>;
 
     LedStrip(CRGB* leds, int start_index, int count)
-        : leds_(leds), start_(start_index), count_(count) {
+        : _RGBleds(leds), _start(start_index), _count(count) {
 
         // Initial values
-        state_ = false;
-        level_ = 0;
+        _state = false;
+        _level = 0;
 
         update_leds();
     }
@@ -46,53 +46,53 @@ public:
     // --------------------------
 
     void SetState(bool s) {
-        if (s == state_) return;
+        if (s == _state) return;
 
-        state_ = s;
+        _state = s;
         update_leds();
 
-        if (state_cb_) {
-            state_cb_(state_);
+        if (_state_cb) {
+            _state_cb(_state);
         }
     }
 
     bool GetState() const {
-        return state_;
+        return _state;
     }
 
     void SetLevel(int l) {
         if (l < 0) l = 0;
         if (l > 100) l = 100;
 
-        if (l == level_) return;
+        if (l == _level) return;
 
-        if(l > 0 && level_ == 0 && !state_) {
+        if(l > 0 && _level == 0 && !_state) {
           SetState(true);
         }
-        level_ = l;
+        _level = l;
 
         // Level 0 always forces state = OFF
-        if (level_ == 0) {
+        if (_level == 0) {
             SetState(false);
         }
 
         update_leds();
 
-        if (level_cb_) {
-            level_cb_(level_);
+        if (_level_cb) {
+            _level_cb(_level);
         }
     }
 
     int GetLevel() const {
-        return level_;
+        return _level;
     }
 
     // --------------------------
     // Observer registrering
     // --------------------------
 
-    void onStateChange(StateCallback cb) { state_cb_ = cb; }
-    void onLevelChange(LevelCallback cb) { level_cb_ = cb; }
+    void onStateChange(StateCallback cb) { _state_cb = cb; }
+    void onLevelChange(LevelCallback cb) { _level_cb = cb; }
 
 private:
     // --------------------------
@@ -100,12 +100,12 @@ private:
     // --------------------------
 
     void update_leds() {
-        for (int i = start_; i < start_ + count_; i++) {
-            if (state_ == false) {
-                leds_[i] = CRGB::Black;
+        for (int i = _start; i < _start + _count; i++) {
+            if (_state == false) {
+                _RGBleds[i] = CRGB::Black;
             } else {
-                uint8_t brightness = map(level_, 0, 100, 0, 255);
-                leds_[i].setRGB(brightness, brightness, brightness);
+                uint8_t brightness = map(_level, 0, 100, 0, 255);
+                _RGBleds[i].setRGB(brightness, brightness, brightness);
             }
         }
 
@@ -116,15 +116,15 @@ private:
     // Private members
     // --------------------------
 
-    CRGB* leds_;
-    int start_;
-    int count_;
+    CRGB* _RGBleds;
+    int _start;
+    int _count;
 
-    bool state_;
-    int level_;
+    bool _state;
+    int _level;
 
-    StateCallback state_cb_;
-    LevelCallback level_cb_;
+    StateCallback _state_cb;
+    LevelCallback _level_cb;
 };
 
 class LedStripStateIO :
@@ -202,7 +202,7 @@ void setup() {
       ->get_app();
 
   // Create the LED strip model
-  auto* strip = new LedStrip(leds,1, 3);
+  auto* strip = new LedStrip(leds,0, 3);
 
   // Create IO interfaces
   auto* stateIO = new LedStripStateIO(strip);
