@@ -14,6 +14,8 @@
 using namespace sensesp;
 
 #define NUM_LEDS 5
+#define DATA_PIN (25)
+
 CRGB leds[NUM_LEDS];
 
 void setup() {
@@ -24,7 +26,7 @@ void setup() {
       .set_hostname("led-strip-controller")
       ->get_app();
 
-  FastLED.addLeds<NEOPIXEL, 5>(leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 
   auto* strip = new LedStrip(leds, 0, 3);
 
