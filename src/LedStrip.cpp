@@ -13,13 +13,7 @@ LedStrip::LedStrip(CRGB* leds, int start_index, int count)
 void LedStrip::SetState(bool s) {
     if (s == _state) return;
     _state = s;
-
     update_leds();
-    if (_state_cb) _state_cb(_state);
-}
-
-bool LedStrip::GetState() const {
-    return _state;
 }
 
 void LedStrip::SetLevel(int l) {
@@ -28,28 +22,9 @@ void LedStrip::SetLevel(int l) {
 
     if (l == _level) return;
 
-    if (l > 0 && _level == 0 && !_state)
-        SetState(true);
-
     _level = l;
 
-    if (_level == 0)
-        SetState(false);
-
     update_leds();
-    if (_level_cb) _level_cb(_level);
-}
-
-int LedStrip::GetLevel() const {
-    return _level;
-}
-
-void LedStrip::onStateChange(StateCallback cb) {
-    _state_cb = cb;
-}
-
-void LedStrip::onLevelChange(LevelCallback cb) {
-    _level_cb = cb;
 }
 
 void LedStrip::update_leds() {

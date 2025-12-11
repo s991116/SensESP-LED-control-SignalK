@@ -2,11 +2,9 @@
 #include "LedStrip.h"
 #include "sensesp.h"
 #include "sensesp/system/valueconsumer.h"
-#include "sensesp/system/valueproducer.h"
 
 class LedStripStateIO :
-    public sensesp::ValueConsumer<bool>,
-    public sensesp::ValueProducer<bool> {
+    public sensesp::ValueConsumer<bool> {
 
 public:
     LedStripStateIO(LedStrip* strip);
@@ -15,6 +13,4 @@ public:
 private:
     LedStrip* _strip;
     bool _last = false;
-
-    void emit_if_changed(bool v);
 };

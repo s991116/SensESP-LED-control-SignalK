@@ -39,14 +39,6 @@ void setup() {
   auto* sk_level = new SKValueListener<int>("electrical.switches.cabinLights.level");
   sk_level->connect_to(levelIO);
 
-  stateIO
-      ->connect_to(new ChangeFilter())
-      ->connect_to(new SKOutputBool("electrical.switches.cabinLights.state"));
-
-  levelIO
-      ->connect_to(new ChangeFilter())
-      ->connect_to(new SKOutputInt("electrical.switches.cabinLights.level"));
-
   sensesp_app->start();
 }
 
