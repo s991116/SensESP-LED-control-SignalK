@@ -16,6 +16,13 @@ void LedStrip::SetState(bool s) {
     update_leds();
 }
 
+void LedStrip::SetNightMode(bool s) {
+    if (s == _nightMode) return;
+    _nightMode = s;
+    update_leds();
+}
+
+
 void LedStrip::SetLevel(int l) {
     if (l < 0) l = 0;
     if (l > 100) l = 100;
@@ -33,7 +40,10 @@ void LedStrip::update_leds() {
             _RGBleds[i] = CRGB::Black;
         } else {
             uint8_t brightness = map(_level, 0, 100, 0, 255);
-            _RGBleds[i].setRGB(brightness, brightness, brightness);
+            if(_nightMode)
+              _RGBleds[i].setRGB(brightness, 0, 0);
+            else
+              _RGBleds[i].setRGB(brightness, brightness, brightness);
         }
     }
     FastLED.show();

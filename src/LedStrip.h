@@ -7,6 +7,7 @@ public:
     LedStrip(CRGB* leds, int start_index, int count);
 
     void SetState(bool s);
+    void SetNightMode(bool v);
     void SetLevel(int l);
 
 
@@ -18,5 +19,6 @@ private:
     int _count;
 
     bool _state;
+    bool _nightMode;
     int _level;
 };
