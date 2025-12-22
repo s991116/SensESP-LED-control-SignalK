@@ -1,24 +1,62 @@
 #pragma once
-#include <functional>
+
 #include <FastLED.h>
+#include <functional>
 
 class LedStrip {
-public:
-    LedStrip(CRGB* leds, int start_index, int count);
+ public:
+  using StateCallback = std::function<void(bool)>;
+  using LevelCallback = std::function<void(int)>;
+  using NightModeCallback = std::function<void(bool)>;
 
-    void SetState(bool s);
-    void SetNightMode(bool v);
-    void SetLevel(int l);
+  LedStrip(CRGB* leds, int start_index, int count);
 
+  // External control
+  void SetState(bool newState);
+  void SetLevel(int newLevel);      // 0–100
+  void SetNightMode(bool newNightMode);
 
-private:
-    void update_leds();
+  bool GetState() const;
+  int  GetLevel() const;
+  bool GetNightMode() const;
 
-    CRGB* _RGBleds;
-    int _start;
-    int _count;
+  // Observer registration
+  void onStateChange(StateCallback cb);
+  void onLevelChange(LevelCallback cb);
+  void onNightModeChange(NightModeCallback cb);
 
-    bool _state;
-    bool _nightMode;
-    int _level;
+  void update();
+
+ private:
+  // Rendering helpers
+  void render_led(int index);
+  void refresh_visible_leds();
+
+  // Animation
+  void start_animation(bool turning_on);
+  void animate_step();
+
+  // Hardware
+  CRGB* _leds;
+  int   _start;
+  int   _count;
+
+  // State
+  bool _state       = false;
+  bool _nightMode   = false;
+  int  _level       = 0;
+
+  // Animation state
+  bool _animating   = false;
+  int  _anim_pos    = 0;   // 0 .. _count
+  int  _anim_dir    = 0;   // +1 = ON, -1 = OFF
+
+  // Timing
+  unsigned long _last_anim_ms = 0;
+  const unsigned long _anim_interval_ms = 80;
+
+  // Observers
+  StateCallback     _state_cb;
+  LevelCallback     _level_cb;
+  NightModeCallback _night_cb;
 };
