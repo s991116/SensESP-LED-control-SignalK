@@ -8,6 +8,7 @@
 #include "sensesp/transforms/change_filter.h"
 
 #include "LedStrip.h"
+#include "LedStripFactory.h"
 #include "LedStripStateIO.h"
 #include "LedStripNightModeIO.h"
 #include "LedStripLevelIO.h"
@@ -20,6 +21,7 @@ using namespace sensesp;
 CRGB leds[NUM_LEDS];
 
 LedStrip* strip = nullptr;
+LedStripFactory* factory = nullptr;
 
 void setup() {
   SetupLogging(ESP_LOG_DEBUG);
@@ -29,39 +31,27 @@ void setup() {
       .set_hostname("led-strip-controller")
       ->get_app();
 
-  FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);
+    FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);
   FastLED.clear(true);
 
-  strip = new LedStrip(leds, 0, 3);
+  factory = new LedStripFactory(leds, NUM_LEDS);
 
-  auto* stateIO = new LedStripStateIO(strip);
-  auto* nightModeIO = new LedStripNightModeIO(strip);
-  auto* levelIO = new LedStripLevelIO(strip);
+  factory->addSegment(
+      0, 3,
+      "electrical.switches.cabinLights.state",
+      "electrical.switches.cabinLights.level",
+      "electrical.switches.nightMode");
 
-  int listenDelay = 200;
-
-  auto* sk_state =
-      new SKValueListener<bool>(
-          "electrical.switches.cabinLights.state", listenDelay);
-  sk_state->connect_to(stateIO);
-
-  auto* sk_nightMode =
-      new SKValueListener<bool>(
-          "electrical.switches.nightMode", listenDelay);
-  sk_nightMode->connect_to(nightModeIO);
-
-  auto* sk_level =
-      new SKValueListener<int>(
-          "electrical.switches.cabinLights.level", listenDelay);
-  sk_level->connect_to(levelIO);
+  factory->addSegment(
+      3, 2,
+      "electrical.switches.reading.state",
+      "electrical.switches.reading.level",
+      "electrical.switches.nightMode");
 
   sensesp_app->start();
 }
 
 void loop() {
   event_loop()->tick();
-
-  if (strip) {
-    strip->update();
-  }
+  factory->updateAll();  
 }
