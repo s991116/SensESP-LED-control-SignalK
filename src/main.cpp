@@ -31,7 +31,7 @@ void setup() {
       .set_hostname("led-strip-controller")
       ->get_app();
 
-    FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);
+  FastLED.addLeds<WS2812B, DATA_PIN, RGB>(leds, NUM_LEDS);
   FastLED.clear(true);
 
   factory = new LedStripFactory(leds, NUM_LEDS);

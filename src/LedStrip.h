@@ -44,7 +44,7 @@ class LedStrip {
   // State
   bool _state       = false;
   bool _nightMode   = false;
-  int  _level       = 0;
+  int  _level       = 50;
 
   // Animation state
   bool _animating   = false;
