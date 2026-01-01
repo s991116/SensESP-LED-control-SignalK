@@ -38,17 +38,27 @@ void setup() {
 
   factory->addSegment(
       0, 3,
-      "electrical.switches.cabinLights.state",
-      "electrical.switches.cabinLights.level",
+      "electrical.switches.lightStairs.state",
+      "electrical.switches.lightStairs.level",
       "electrical.switches.nightMode");
 
   factory->addSegment(
       3, 2,
-      "electrical.switches.reading.state",
-      "electrical.switches.reading.level",
+      "electrical.switches.lightOutside.state",
+      "electrical.switches.lightOutside.level",
       "electrical.switches.nightMode");
 
-  sensesp_app->start();
+  event_loop()->onRepeat(1000, []() {
+    static bool emitted = false;
+    if (!emitted) {
+        factory->emitInitialState();
+        ESP_LOGI("Main", "Initial LED state sent to Signal K");
+        emitted = true;
+    }
+  });
+
+  sensesp_app->start(); 
+
 }
 
 void loop() {

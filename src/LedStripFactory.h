@@ -21,10 +21,20 @@ class LedStripFactory {
       int listen_delay = 200);
 
   void updateAll();
+  void emitInitialState();
 
  private:
   CRGB* leds_;
   int total_leds_;
 
-  std::vector<LedStrip*> segments_;
+  struct SegmentIO {
+    LedStrip* strip;
+    LedStripStateIO* stateIO;
+    LedStripLevelIO* levelIO;
+    LedStripNightModeIO* nightIO;
+  };
+
+  //std::vector<LedStrip*> segments_;
+  std::vector<SegmentIO> segments_;
+
 };

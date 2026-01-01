@@ -2,9 +2,12 @@
 #include "LedStrip.h"
 #include "sensesp.h"
 #include "sensesp/system/valueconsumer.h"
+#include "sensesp/system/valueproducer.h"
+
 
 class LedStripLevelIO :
-    public sensesp::ValueConsumer<int> {
+    public sensesp::ValueConsumer<int>, 
+    public sensesp::ValueProducer<int>  {
 
 public:
     LedStripLevelIO(LedStrip* strip);
